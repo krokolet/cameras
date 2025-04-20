@@ -1,4 +1,4 @@
-from flask import Flask, Response, render_template
+from flask import Flask, Response, jsonify  
 import subprocess
 import numpy as np
 from PIL import Image
@@ -8,8 +8,10 @@ import time
 from onvif import ONVIFCamera
 from onvif.client import ONVIFService, ONVIFError
 from urllib.parse import urlparse
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 def get_rtsp_url(camera_ip, username, password):
     try:
@@ -157,10 +159,21 @@ def video_feed(camera_id):
 
     return Response(generate(),
                    mimetype='multipart/x-mixed-replace; boundary=frame')
+    
+@app.route('/status')
+def camera_status():
+    return jsonify({  # Используем jsonify вместо прямого возврата dict
+        cam_id: {
+            'running': CAMERAS[cam_id]['running'],
+            'thread_alive': CAMERAS[cam_id]['thread'].is_alive() if CAMERAS[cam_id]['thread'] else False,
+            'last_update': CAMERAS[cam_id].get('last_update')
+        }
+        for cam_id in CAMERAS
+    })
 
-@app.route('/')
-def index():
-    return render_template('index.html', cameras=CAMERAS.keys())
+# @app.route('/')
+# def index():
+#     return render_template('index.html', cameras=CAMERAS.keys())
 
 @app.route('/stop')
 def stop():
