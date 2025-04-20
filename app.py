@@ -5,13 +5,40 @@ from PIL import Image
 import io
 import threading
 import time
+from onvif import ONVIFCamera
+from onvif.client import ONVIFService, ONVIFError
+from urllib.parse import urlparse
 
 app = Flask(__name__)
+
+def get_rtsp_url(camera_ip, username, password):
+    try:
+        cam = ONVIFCamera(camera_ip, 80, username, password)
+        media_service = cam.create_media_service()
+        profiles = media_service.GetProfiles()
+        
+        stream_setup = {
+            'StreamSetup': {
+                'Stream': 'RTP-Unicast',
+                'Transport': {'Protocol': 'RTSP'}
+            },
+            'ProfileToken': profiles[0].token
+        }
+        
+        uri_info = media_service.GetStreamUri(stream_setup)
+        parsed = urlparse(uri_info.Uri)
+        
+        # Добавляем логин:пароль в URL
+        return f"rtsp://{username}:{password}@{parsed.netloc}{parsed.path}?{parsed.query}"
+        
+    except Exception as e:
+        print(f"ONVIF Error: {str(e)}")
+        return None
 
 # Конфигурация камер
 CAMERAS = {
     "cam1": {
-        "url": "rtsp://admin:user1357@192.168.2.134/stream1",
+        "url": get_rtsp_url('192.168.2.134', 'admin', 'user1357'),
         "width": 640,
         "height": 480,
         "running": False,
@@ -20,7 +47,7 @@ CAMERAS = {
         "thread": None
     },
     "cam2": {
-        "url": "rtsp://admin:user1357@192.168.2.137/stream1",
+        "url": get_rtsp_url('192.168.2.137', 'admin', 'user1357'),
         "width": 640,
         "height": 480,
         "running": False,
@@ -33,6 +60,23 @@ CAMERAS = {
 def camera_stream(camera_id):
     """Функция для захвата потока с камеры в отдельном потоке"""
     camera = CAMERAS[camera_id]
+    
+    if not camera['url']:
+        print('IF')
+        cam = ONVIFCamera('192.168.2.137', 80, 'admin', 'user1357')
+        media_service = cam.create_media_service()
+        profiles = media_service.GetProfiles()
+        stream_setup = {
+            'StreamSetup': {
+                'Stream': 'RTP-Unicast',  # Или 'RTP-Multicast'
+                'Transport': {
+                    'Protocol': 'RTSP'
+                }
+            },
+            'ProfileToken': profiles[0].token
+        }
+        camera['url'] = media_service.GetStreamUri(stream_setup)
+        print(camera['url'],'***URL')
     
     while camera['running']:
         try:
