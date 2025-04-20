@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Мониторинг камер</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .camera-container {
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .camera-title {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Система видеонаблюдения</h1>
+    
+    {% for camera_id in cameras %}
+    <div class="camera-container">
+        <div class="camera-title">Камера {{ camera_id }}</div>
+        <img src="{{ url_for('video_feed', camera_id=camera_id) }}" 
+             width="640" 
+             onerror="this.onerror=null;this.src='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='">
+    </div>
+    {% endfor %}
+    
+    <script>
+        // Автоматическое обновление при потере соединения
+        document.querySelectorAll('img').forEach(img => {
+            img.addEventListener('error', function() {
+                setTimeout(() => {
+                    this.src = this.src.split('?')[0] + '?' + Date.now();
+                }, 1000);
+            });
+        });
+    </script>
+</body>
+</html>
