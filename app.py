@@ -40,7 +40,10 @@ def get_rtsp_url(camera_ip, username, password):
 # Конфигурация камер
 CAMERAS = {
     "cam1": {
-        "url": get_rtsp_url('192.168.2.134', 'admin', 'user1357'),
+        "ip": '192.168.2.134',
+        "login": 'admin',
+        "password": 'user1357',
+        "rtspUrl": '',
         "width": 640,
         "height": 480,
         "running": False,
@@ -49,7 +52,10 @@ CAMERAS = {
         "thread": None
     },
     "cam2": {
-        "url": get_rtsp_url('192.168.2.137', 'admin', 'user1357'),
+        "ip": '192.168.2.137',
+        "login": 'admin',
+        "password": 'user1357',
+        "rtspUrl": get_rtsp_url('192.168.2.137', 'admin', 'user1357'),
         "width": 640,
         "height": 480,
         "running": False,
@@ -63,22 +69,9 @@ def camera_stream(camera_id):
     """Функция для захвата потока с камеры в отдельном потоке"""
     camera = CAMERAS[camera_id]
     
-    if not camera['url']:
-        print('IF')
-        cam = ONVIFCamera('192.168.2.137', 80, 'admin', 'user1357')
-        media_service = cam.create_media_service()
-        profiles = media_service.GetProfiles()
-        stream_setup = {
-            'StreamSetup': {
-                'Stream': 'RTP-Unicast',  # Или 'RTP-Multicast'
-                'Transport': {
-                    'Protocol': 'RTSP'
-                }
-            },
-            'ProfileToken': profiles[0].token
-        }
-        camera['url'] = media_service.GetStreamUri(stream_setup)
-        print(camera['url'],'***URL')
+    if not camera['rtspUrl']:
+        camera['rtspUrl'] = get_rtsp_url(camera['ip'], camera['login'], camera['password'])
+
     
     while camera['running']:
         try:
@@ -86,7 +79,7 @@ def camera_stream(camera_id):
                 'ffmpeg',
                 '-timeout', '5000000',
                 '-rtsp_transport', 'tcp',
-                '-i', camera['url'],
+                '-i', camera['rtspUrl'],
                 '-f', 'image2pipe',
                 '-pix_fmt', 'rgb24',
                 '-vcodec', 'rawvideo',
