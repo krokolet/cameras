@@ -5,6 +5,7 @@ from PIL import Image
 import io
 import threading
 import time
+import sqlite3
 from onvif import ONVIFCamera
 from onvif.client import ONVIFService, ONVIFError
 from urllib.parse import urlparse
@@ -12,6 +13,9 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
+
+conn = sqlite3.connect('cameras.db')
+cursor = conn.cursor()
 
 def get_rtsp_url(camera_ip, username, password):
     try:
@@ -64,6 +68,24 @@ CAMERAS = {
         "thread": None
     }
 }
+
+def load_cameras_from_database():
+    cursor.execute("SELECT * FROM cameras;")
+    rows = cursor.fetchall()
+    for row in rows:
+        cam_id = str(row[0])
+        CAMERAS[cam_id] = {
+            "ip": row[1],
+            "login": row[2],
+            "password": row[3],
+            "rtspUrl": row[4],
+            "width": row[5],
+            "height": row[6],
+            "running": bool(row[7]),
+            "frame": None,
+            "process": None,
+            "thread": None
+        }
 
 def camera_stream(camera_id):
     """Функция для захвата потока с камеры в отдельном потоке"""
@@ -163,10 +185,6 @@ def camera_status():
         }
         for cam_id in CAMERAS
     })
-
-# @app.route('/')
-# def index():
-#     return render_template('index.html', cameras=CAMERAS.keys())
 
 @app.route('/stop')
 def stop():

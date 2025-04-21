@@ -14,9 +14,7 @@ function App() {
     };
     
     fetchCameras();
-    // const interval = setInterval(fetchCameras, 5000);
-    
-    // return () => clearInterval(interval);
+
   }, []);
 
   return (
