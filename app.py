@@ -1,4 +1,4 @@
-from flask import Flask, Response, jsonify  
+from flask import Flask, Response, jsonify, request  
 import subprocess
 import numpy as np
 from PIL import Image
@@ -43,7 +43,7 @@ def get_rtsp_url(camera_ip, username, password):
 
 # Конфигурация камер
 CAMERAS = {
-    "cam1": {
+    "1": {
         "ip": '192.168.2.134',
         "login": 'admin',
         "password": 'user1357',
@@ -55,7 +55,7 @@ CAMERAS = {
         "process": None,
         "thread": None
     },
-    "cam2": {
+    "2": {
         "ip": '192.168.2.137',
         "login": 'admin',
         "password": 'user1357',
@@ -174,6 +174,42 @@ def video_feed(camera_id):
 
     return Response(generate(),
                    mimetype='multipart/x-mixed-replace; boundary=frame')
+    
+@app.route('/add_camera', methods=['POST'])
+def add_camera():
+        try:
+            # Получаем JSON данные из запроса
+            data = request.get_json()
+            
+            # Проверяем наличие обязательных полей
+            if not data or not all(key in data for key in ['ip', 'login', 'password']):
+                return jsonify({"error": "Missing required fields (ip, login, password)"}), 400
+            
+            # Генерируем новый ID
+            new_id = str(max(int(k) for k in CAMERAS.keys()) + 1) if CAMERAS else "1"
+            
+            rtspUrl = get_rtsp_url(data["ip"],data["login"],data["password"])
+            
+            # Добавляем новую камеру
+            CAMERAS[new_id] = {
+                "ip": data["ip"],
+                "login": data["login"],
+                "password": data["password"],
+                "rtspUrl": rtspUrl,
+                "width": 640,
+                "height": 480,
+                "running": False,
+                "frame": None,
+                "process": None,
+                "thread": None
+            }
+            
+            start_camera_threads()
+            
+            return jsonify({"message": "Camera added successfully", "id": new_id}), 201
+        
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
     
 @app.route('/status')
 def camera_status():
